@@ -32,6 +32,8 @@ function App() {
 
   // Modal State
   const [modalImage, setModalImage] = useState(null)
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false)
+  const [roomToCheckout, setRoomToCheckout] = useState(null)
 
   const [rooms, setRooms] = useState(() => {
     const savedRooms = localStorage.getItem('hotel-wari-rooms')
@@ -108,21 +110,62 @@ function App() {
     setCurrentView('rooms')
   }
 
-  const handleCheckout = (roomNumber) => {
-    if (window.confirm('¿Confirmar salida?')) {
-      const updatedRooms = rooms.map(room => {
-        if (room.number === roomNumber) {
-          return {
-            number: room.number,
-            type: room.type,
-            floor: room.floor,
-            status: 'libre'
-          }
+  const handleCheckout = (roomId) => {
+    // Aquí asumo que esta función es llamada por el modal al presionar "Confirmar"
+
+    // 1. Lógica de Limpieza de datos (Lo esencial)
+    const updatedRooms = rooms.map(room => {
+      // Busca la habitación a liberar por su ID (roomId)
+      if (room.id === roomId) {
+        return {
+          ...room,
+          isOccupied: false, // CLAVE: El cuarto se pone VERDE/Libre
+          guestDetails: null, // Limpiamos datos del huésped
+          totalCost: 0,
+        };
+      }
+      return room;
+    });
+
+    // 2. ACTUALIZAR EL ESTADO GLOBAL Y LA MEMORIA DEL NAVEGADOR
+    setRooms(updatedRooms); // Actualiza la vista de React
+    localStorage.setItem('hotel-wari-rooms', JSON.stringify(updatedRooms)); // GUARDA EN MEMORIA
+
+    // Opcional: Cierra el modal (asumiendo que setModalImage existe)
+    setModalImage(null);
+    setShowCheckoutModal(false);
+  };
+
+  const confirmCheckout = () => {
+    if (!roomToCheckout) return
+
+    const updatedRooms = rooms.map(room => {
+      if (room.number === roomToCheckout) {
+        // Return only the essential room properties, removing all guest data
+        return {
+          number: room.number,
+          type: room.type,
+          floor: room.floor,
+          status: 'libre'
         }
-        return room
-      })
-      setRooms(updatedRooms)
-    }
+      }
+      return room
+    })
+
+    // Update state
+    setRooms(updatedRooms)
+
+    // Immediately save to localStorage to ensure persistence
+    localStorage.setItem('hotel-wari-rooms', JSON.stringify(updatedRooms))
+
+    // Close modal
+    setShowCheckoutModal(false)
+    setRoomToCheckout(null)
+  }
+
+  const cancelCheckout = () => {
+    setShowCheckoutModal(false)
+    setRoomToCheckout(null)
   }
 
   if (isLoggedIn) {
@@ -134,52 +177,58 @@ function App() {
           <div className="floor-section">
             <h2>Piso 2</h2>
             <div className="rooms-grid">
-              {rooms.filter(r => r.floor === 2).map(room => (
-                <div key={room.number} className={`room-card status-${room.status}`}>
-                  <div className="room-header">
-                    <div className="room-info">
-                      <span className="room-number">{room.number}</span>
-                      <span className="room-type">{room.type}</span>
+              {rooms.filter(r => r.floor === 2).map(room => {
+                const isOccupied = room.guestName && room.stayDuration;
+                return (
+                  <div key={room.number} className={`room-card status-${isOccupied ? 'ocupado' : 'libre'}`}>
+                    <div className="room-header">
+                      <div className="room-info">
+                        <span className="room-number">{room.number}</span>
+                        <span className="room-type">{room.type}</span>
+                      </div>
+                      <img src={ROOM_IMAGES[room.type]} alt={room.type} className="room-thumbnail" />
                     </div>
-                    <img src={ROOM_IMAGES[room.type]} alt={room.type} className="room-thumbnail" />
+                    {isOccupied && (
+                      <div className="guest-details">
+                        <p><strong>Huésped:</strong> {room.guestName}</p>
+                        <p><strong>Ingreso:</strong> {room.entryTime}</p>
+                        <p><strong>Estadía:</strong> {room.stayDuration}</p>
+                        {room.totalCost && <p><strong>Costo Total:</strong> S/ {room.totalCost}</p>}
+                        <button className="checkout-button" onClick={() => handleCheckout(room.number)}>Finalizar Estadía</button>
+                      </div>
+                    )}
                   </div>
-                  {room.status === 'ocupado' && room.guestName && (
-                    <div className="guest-details">
-                      <p><strong>Huésped:</strong> {room.guestName}</p>
-                      <p><strong>Ingreso:</strong> {room.entryTime}</p>
-                      <p><strong>Estadía:</strong> {room.stayDuration}</p>
-                      {room.totalCost && <p><strong>Costo Total:</strong> S/ {room.totalCost}</p>}
-                      <button className="checkout-button" onClick={() => handleCheckout(room.number)}>Finalizar Estadía</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
           <div className="floor-section">
             <h2>Piso 3</h2>
             <div className="rooms-grid">
-              {rooms.filter(r => r.floor === 3).map(room => (
-                <div key={room.number} className={`room-card status-${room.status}`}>
-                  <div className="room-header">
-                    <div className="room-info">
-                      <span className="room-number">{room.number}</span>
-                      <span className="room-type">{room.type}</span>
+              {rooms.filter(r => r.floor === 3).map(room => {
+                const isOccupied = room.guestName && room.stayDuration;
+                return (
+                  <div key={room.number} className={`room-card status-${isOccupied ? 'ocupado' : 'libre'}`}>
+                    <div className="room-header">
+                      <div className="room-info">
+                        <span className="room-number">{room.number}</span>
+                        <span className="room-type">{room.type}</span>
+                      </div>
+                      <img src={ROOM_IMAGES[room.type]} alt={room.type} className="room-thumbnail" />
                     </div>
-                    <img src={ROOM_IMAGES[room.type]} alt={room.type} className="room-thumbnail" />
+                    {isOccupied && (
+                      <div className="guest-details">
+                        <p><strong>Huésped:</strong> {room.guestName}</p>
+                        <p><strong>Ingreso:</strong> {room.entryTime}</p>
+                        <p><strong>Estadía:</strong> {room.stayDuration}</p>
+                        {room.totalCost && <p><strong>Costo Total:</strong> S/ {room.totalCost}</p>}
+                        <button className="checkout-button" onClick={() => handleCheckout(room.number)}>Finalizar Estadía</button>
+                      </div>
+                    )}
                   </div>
-                  {room.status === 'ocupado' && room.guestName && (
-                    <div className="guest-details">
-                      <p><strong>Huésped:</strong> {room.guestName}</p>
-                      <p><strong>Ingreso:</strong> {room.entryTime}</p>
-                      <p><strong>Estadía:</strong> {room.stayDuration}</p>
-                      {room.totalCost && <p><strong>Costo Total:</strong> S/ {room.totalCost}</p>}
-                      <button className="checkout-button" onClick={() => handleCheckout(room.number)}>Finalizar Estadía</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -294,6 +343,28 @@ function App() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <button className="login-button" onClick={handleLogin}>Entrar</button>
+        </div>
+      )}
+
+      {/* Checkout Confirmation Modal */}
+      {showCheckoutModal && (
+        <div className="modal-overlay" onClick={cancelCheckout}>
+          <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Confirmar Salida</h2>
+            <p className="modal-message">
+              ¿Quieres confirmar la salida de esta habitación?
+              <br />
+              ¡Esperamos verles pronto de nuevo!
+            </p>
+            <div className="modal-buttons">
+              <button className="modal-cancel-btn" onClick={cancelCheckout}>
+                Cancelar
+              </button>
+              <button className="modal-confirm-btn" onClick={confirmCheckout}>
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

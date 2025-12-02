@@ -5,7 +5,7 @@ import simpleImg from './assets/simple.jpg'
 import dobleImg from './assets/doble.jpg'
 import familiarImg from './assets/familiar.jpg'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBed, faUserPlus, faReceipt, faBoxes } from '@fortawesome/free-solid-svg-icons'
+import { faBed, faUserPlus, faReceipt, faBoxes, faHome, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
 import {
   BarChart,
   Bar,
@@ -358,6 +358,68 @@ function App() {
       })
   }
 
+  // Función de Cierre de Sesión
+  const cerrarSesion = () => {
+    setEstaAutenticado(false)
+    setUsuarioActual(null)
+    setNombreUsuario('')
+    setContrasena('')
+    setVistaActual('tablero')
+  }
+
+  // Componente Interno: Menú de Navegación
+  const MenuNavegacion = () => {
+    return (
+      <nav className="navbar-principal">
+        <div className="navbar-enlaces">
+          <button
+            className={`navbar-enlace ${vistaActual === 'tablero' ? 'activo' : ''}`}
+            onClick={() => setVistaActual('tablero')}
+          >
+            <FontAwesomeIcon icon={faHome} />
+            <span>Panel</span>
+          </button>
+          <button
+            className={`navbar-enlace ${vistaActual === 'habitaciones' ? 'activo' : ''}`}
+            onClick={() => setVistaActual('habitaciones')}
+          >
+            <FontAwesomeIcon icon={faBed} />
+            <span>Habitaciones</span>
+          </button>
+          {usuarioActual?.rol === 'recepcionista' && (
+            <button
+              className={`navbar-enlace ${vistaActual === 'registro' ? 'activo' : ''}`}
+              onClick={() => setVistaActual('registro')}
+            >
+              <FontAwesomeIcon icon={faUserPlus} />
+              <span>Registro</span>
+            </button>
+          )}
+          {usuarioActual?.rol === 'administrador' && (
+            <button
+              className={`navbar-enlace ${vistaActual === 'facturacion' ? 'activo' : ''}`}
+              onClick={() => setVistaActual('facturacion')}
+            >
+              <FontAwesomeIcon icon={faReceipt} />
+              <span>Facturación</span>
+            </button>
+          )}
+          <button
+            className={`navbar-enlace ${vistaActual === 'inventario' ? 'activo' : ''}`}
+            onClick={() => setVistaActual('inventario')}
+          >
+            <FontAwesomeIcon icon={faBoxes} />
+            <span>Inventario</span>
+          </button>
+        </div>
+        <button className="boton-cerrar-sesion" onClick={cerrarSesion}>
+          <FontAwesomeIcon icon={faSignOutAlt} />
+          <span>Cerrar Sesión</span>
+        </button>
+      </nav>
+    )
+  }
+
   // Componente Interno: Modal de Imagen Ampliada
   const ModalImagen = ({ src, alCerrar }) => {
     if (!src) return null;
@@ -373,9 +435,12 @@ function App() {
 
   // Renderizado Principal
   if (estaAutenticado) {
+    // Renderizar contenido de cada vista
+    let contenidoVista
+
     // Vista de Habitaciones
     if (vistaActual === 'habitaciones') {
-      return (
+      contenidoVista = (
         <div className="contenedor-habitaciones">
           <h1 className="titulo-habitaciones">Habitaciones</h1>
 
@@ -489,8 +554,6 @@ function App() {
             </div>
           </div>
 
-          <button className="boton-volver" onClick={() => setVistaActual('tablero')}>Volver al Panel</button>
-
           {/* Renderizado de Modales */}
           {imagenAmpliada && (
             <ModalImagen src={imagenAmpliada} alCerrar={() => setImagenAmpliada(null)} />
@@ -517,8 +580,8 @@ function App() {
     }
 
     // Vista de Registro
-    if (vistaActual === 'registro') {
-      return (
+    else if (vistaActual === 'registro') {
+      contenidoVista = (
         <div className="contenedor-registro">
           <h1 className="titulo-registro">Registrar Huésped</h1>
           <div className="formulario-registro">
@@ -578,10 +641,10 @@ function App() {
     }
 
     // Vista de Facturación
-    if (vistaActual === 'facturacion') {
+    else if (vistaActual === 'facturacion') {
       const totalAcumulado = historialVentas.reduce((sum, venta) => sum + (venta.costoTotal || 0), 0)
 
-      return (
+      contenidoVista = (
         <div className="contenedor-facturacion">
           <h1 className="titulo-facturacion">Historial de Facturación</h1>
 
@@ -629,15 +692,13 @@ function App() {
               </div>
             </>
           )}
-
-          <button className="boton-volver" onClick={() => setVistaActual('tablero')}>Volver al Panel</button>
         </div>
       )
     }
 
     // Vista de Inventario
-    if (vistaActual === 'inventario') {
-      return (
+    else if (vistaActual === 'inventario') {
+      contenidoVista = (
         <div className="contenedor-inventario">
           <h1 className="titulo-inventario">Gestión de Inventario</h1>
 
@@ -694,71 +755,81 @@ function App() {
               </tbody>
             </table>
           </div>
-
-          <button className="boton-volver" onClick={() => setVistaActual('tablero')}>Volver al Panel</button>
         </div>
       )
     }
 
     // Vista del Tablero (Dashboard)
-    const datosIngresos = procesarIngresosDiarios()
+    else {
+      const datosIngresos = procesarIngresosDiarios()
 
+      contenidoVista = (
+        <div className="contenedor-tablero">
+          <div className="encabezado-tablero">
+            <img src={fachadaImg} alt="Fachada Hotel Wari" className="imagen-fachada" />
+            <h1 className="titulo-tablero">Panel de Control</h1>
+            {usuarioActual && (
+              <p className="mensaje-bienvenida">
+                Bienvenido, {usuarioActual.rol === 'administrador' ? 'Administrador' : 'Recepcionista'}
+              </p>
+            )}
+          </div>
+
+          {/* Sección de Resumen de Ingresos */}
+          {datosIngresos.length > 0 && (
+            <div className="seccion-resumen-ingresos">
+              <h2>Resumen de Ingresos</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={datosIngresos}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="fecha" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="ingresos" fill="#8b5cf6" name="Ingresos (S/)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          <div className="cuadricula-menu">
+            <div className="tarjeta-menu" onClick={() => setVistaActual('habitaciones')}>
+              <FontAwesomeIcon icon={faBed} className="icono-menu" />
+              <h3>Ver Habitaciones</h3>
+              <p>Estado actual y ocupación</p>
+            </div>
+            {usuarioActual?.rol === 'recepcionista' && (
+              <div className="tarjeta-menu" onClick={() => setVistaActual('registro')}>
+                <FontAwesomeIcon icon={faUserPlus} className="icono-menu" />
+                <h3>Registrar Huésped</h3>
+                <p>Ingreso de nuevos clientes</p>
+              </div>
+            )}
+            {usuarioActual?.rol === 'administrador' && (
+              <div className="tarjeta-menu" onClick={() => setVistaActual('facturacion')}>
+                <FontAwesomeIcon icon={faReceipt} className="icono-menu" />
+                <h3>Facturación</h3>
+                <p>Historial de pagos</p>
+              </div>
+            )}
+            <div className="tarjeta-menu" onClick={() => setVistaActual('inventario')}>
+              <FontAwesomeIcon icon={faBoxes} className="icono-menu" />
+              <h3>Inventario</h3>
+              <p>Control de stock</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Renderizar con navbar y contenido
     return (
-      <div className="contenedor-tablero">
-        <div className="encabezado-tablero">
-          <img src={fachadaImg} alt="Fachada Hotel Wari" className="imagen-fachada" />
-          <h1 className="titulo-tablero">Panel de Control</h1>
-          {usuarioActual && (
-            <p className="mensaje-bienvenida">
-              Bienvenido, {usuarioActual.rol === 'administrador' ? 'Administrador' : 'Recepcionista'}
-            </p>
-          )}
+      <>
+        <MenuNavegacion />
+        <div className="contenido-principal">
+          {contenidoVista}
         </div>
-
-        {/* Sección de Resumen de Ingresos */}
-        {datosIngresos.length > 0 && (
-          <div className="seccion-resumen-ingresos">
-            <h2>Resumen de Ingresos</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={datosIngresos}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="fecha" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="ingresos" fill="#8b5cf6" name="Ingresos (S/)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        <div className="cuadricula-menu">
-          <div className="tarjeta-menu" onClick={() => setVistaActual('habitaciones')}>
-            <FontAwesomeIcon icon={faBed} className="icono-menu" />
-            <h3>Ver Habitaciones</h3>
-            <p>Estado actual y ocupación</p>
-          </div>
-          {usuarioActual?.rol === 'recepcionista' && (
-            <div className="tarjeta-menu" onClick={() => setVistaActual('registro')}>
-              <FontAwesomeIcon icon={faUserPlus} className="icono-menu" />
-              <h3>Registrar Huésped</h3>
-              <p>Ingreso de nuevos clientes</p>
-            </div>
-          )}
-          {usuarioActual?.rol === 'administrador' && (
-            <div className="tarjeta-menu" onClick={() => setVistaActual('facturacion')}>
-              <FontAwesomeIcon icon={faReceipt} className="icono-menu" />
-              <h3>Facturación</h3>
-              <p>Historial de pagos</p>
-            </div>
-          )}
-          <div className="tarjeta-menu" onClick={() => setVistaActual('inventario')}>
-            <FontAwesomeIcon icon={faBoxes} className="icono-menu" />
-            <h3>Inventario</h3>
-            <p>Control de stock</p>
-          </div>
-        </div>
-      </div>
+      </>
     )
   }
 

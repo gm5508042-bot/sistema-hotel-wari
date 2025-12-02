@@ -1111,3 +1111,133 @@
     padding: 0.8rem 0.6rem;
   }
 }
+
+/* ========================================
+   ESTILOS PARA BARRA DE NAVEGACIÓN
+   ======================================== */
+
+.navbar-principal {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.navbar-enlaces {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.navbar-enlace {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.2rem;
+  background-color: transparent;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-enlace::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: left 0.3s ease;
+}
+
+.navbar-enlace:hover::before {
+  left: 0;
+}
+
+.navbar-enlace:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.navbar-enlace.activo {
+  background-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.navbar-enlace svg {
+  font-size: 1.2rem;
+}
+
+.boton-cerrar-sesion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background-color: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.boton-cerrar-sesion:hover {
+  background-color: rgba(220, 38, 38, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.boton-cerrar-sesion svg {
+  font-size: 1.2rem;
+}
+
+.contenido-principal {
+  padding-top: 0;
+  min-height: calc(100vh - 80px);
+}
+
+/* Responsive para navbar */
+@media (max-width: 768px) {
+  .navbar-principal {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .navbar-enlaces {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .navbar-enlace span,
+  .boton-cerrar-sesion span {
+    display: none;
+  }
+
+  .navbar-enlace,
+  .boton-cerrar-sesion {
+    padding: 0.7rem;
+  }
+
+  .navbar-enlace svg,
+  .boton-cerrar-sesion svg {
+    font-size: 1.5rem;
+  }
+}

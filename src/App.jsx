@@ -43,11 +43,21 @@ function App() {
   // Inicializar estado de autenticación desde localStorage
   const [usuarioActual, setUsuarioActual] = useState(() => {
     const usuarioGuardado = localStorage.getItem('hotel-wari-usuario')
-    return usuarioGuardado ? JSON.parse(usuarioGuardado) : null
+    try {
+      return usuarioGuardado ? JSON.parse(usuarioGuardado) : null
+    } catch (e) {
+      return null
+    }
   })
 
   const [estaAutenticado, setEstaAutenticado] = useState(() => {
-    return !!localStorage.getItem('hotel-wari-usuario')
+    const usuarioGuardado = localStorage.getItem('hotel-wari-usuario')
+    try {
+      const parsed = usuarioGuardado ? JSON.parse(usuarioGuardado) : null
+      return !!parsed
+    } catch (e) {
+      return false
+    }
   })
 
   const [nombreUsuario, setNombreUsuario] = useState('')
@@ -56,9 +66,13 @@ function App() {
   // Inicializar vista actual basada en el rol guardado o por defecto
   const [vistaActual, setVistaActual] = useState(() => {
     const usuarioGuardado = localStorage.getItem('hotel-wari-usuario')
-    if (usuarioGuardado) {
-      const usuario = JSON.parse(usuarioGuardado)
-      return usuario.rol === 'administrador' ? 'facturacion' : 'tablero'
+    try {
+      if (usuarioGuardado) {
+        const usuario = JSON.parse(usuarioGuardado)
+        return usuario && usuario.rol === 'administrador' ? 'facturacion' : 'tablero'
+      }
+    } catch (e) {
+      // Ignorar error
     }
     return 'tablero'
   })
@@ -82,7 +96,12 @@ function App() {
   const [habitaciones, setHabitaciones] = useState(() => {
     const habitacionesGuardadas = localStorage.getItem('hotel-wari-habitaciones')
     if (habitacionesGuardadas) {
-      return JSON.parse(habitacionesGuardadas)
+      try {
+        const parsed = JSON.parse(habitacionesGuardadas)
+        if (parsed && Array.isArray(parsed)) return parsed
+      } catch (e) {
+        console.error("Error parsing habitaciones:", e)
+      }
     }
     return [
       // Piso 2
@@ -176,6 +195,84 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('hotel-wari-mensajes', JSON.stringify(mensajes))
+  }, [mensajes])
+
+  // --- Lógica de Sincronización en Tiempo Real y Notificaciones ---
+
+  // Referencia para rastrear la cantidad previa de pedidos pendientes
+  const prevPendientesRef = useRef(0)
+  // Estado para controlar si el audio está habilitado por el usuario
+  const [audioHabilitado, setAudioHabilitado] = useState(false)
+
+  // Función para reproducir sonido de notificación
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      if (!AudioContext) return
+
+      const ctx = new AudioContext()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+
+      // Configuración del sonido (tipo "ding" más agradable)
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(600, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1)
+
+      gain.gain.setValueAtTime(0.1, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.5)
+    } catch (e) {
+      console.error("Error al reproducir sonido:", e)
+    }
+  }
+
+  // Función para activar audio manualmente (necesario por políticas del navegador)
+  const activarAudio = () => {
+    playNotificationSound() // Reproducir un sonido de prueba
+    setAudioHabilitado(true)
+  }
+
+  // Efecto para escuchar cambios en otras pestañas (Sincronización)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'hotel-wari-habitaciones' && e.newValue) {
+        try {
+          const nuevasHabitaciones = JSON.parse(e.newValue)
+          if (nuevasHabitaciones && Array.isArray(nuevasHabitaciones)) {
+            setHabitaciones(nuevasHabitaciones)
+          }
+        } catch (error) {
+          console.error("Error al sincronizar habitaciones:", error)
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  // Efecto para detectar nuevos pedidos y notificar al Admin
+  useEffect(() => {
+    if (!habitaciones || !Array.isArray(habitaciones)) return
+
+    // Contar pedidos pendientes actuales
+    const pendientesActuales = habitaciones.filter(h => h.estadoDesayuno === 'pendiente').length
+
+    // Si hay más pendientes que antes Y el usuario es admin, sonar alarma
+    if (pendientesActuales > prevPendientesRef.current) {
+      if (usuarioActual?.rol === 'administrador') {
+        // Intentar reproducir siempre, pero si falla es por falta de interacción
+        playNotificationSound()
+      }
+    }
+
+    // Actualizar referencia
     prevPendientesRef.current = pendientesActuales
   }, [habitaciones, usuarioActual])
 

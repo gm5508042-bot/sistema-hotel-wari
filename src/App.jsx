@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import fachadaImg from './assets/fachada.jpg'
 import simpleImg from './assets/simple.jpg'
@@ -39,11 +39,29 @@ const USUARIOS_AUTORIZADOS = [
 function App() {
   // Estados de la Aplicación (Nombres en Español)
   const [mostrarLogin, setMostrarLogin] = useState(false)
-  const [estaAutenticado, setEstaAutenticado] = useState(false)
-  const [usuarioActual, setUsuarioActual] = useState(null) // { usuario: 'admin', rol: 'administrador' }
+
+  // Inicializar estado de autenticación desde localStorage
+  const [usuarioActual, setUsuarioActual] = useState(() => {
+    const usuarioGuardado = localStorage.getItem('hotel-wari-usuario')
+    return usuarioGuardado ? JSON.parse(usuarioGuardado) : null
+  })
+
+  const [estaAutenticado, setEstaAutenticado] = useState(() => {
+    return !!localStorage.getItem('hotel-wari-usuario')
+  })
+
   const [nombreUsuario, setNombreUsuario] = useState('')
   const [contrasena, setContrasena] = useState('')
-  const [vistaActual, setVistaActual] = useState('tablero') // 'dashboard' ahora es 'tablero'
+
+  // Inicializar vista actual basada en el rol guardado o por defecto
+  const [vistaActual, setVistaActual] = useState(() => {
+    const usuarioGuardado = localStorage.getItem('hotel-wari-usuario')
+    if (usuarioGuardado) {
+      const usuario = JSON.parse(usuarioGuardado)
+      return usuario.rol === 'administrador' ? 'facturacion' : 'tablero'
+    }
+    return 'tablero'
+  })
 
   // Estado del Formulario de Registro
   const [nombreHuesped, setNombreHuesped] = useState('')
@@ -158,7 +176,22 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('hotel-wari-mensajes', JSON.stringify(mensajes))
-  }, [mensajes])
+    prevPendientesRef.current = pendientesActuales
+  }, [habitaciones, usuarioActual])
+
+  // Efecto para prevenir recarga accidental de la página
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = '' // Necesario para Chrome/Edge
+      return '' // Necesario para otros navegadores
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  // ---------------------------------------------------------------
 
 
   // Funciones de Lógica
@@ -168,11 +201,14 @@ function App() {
     )
 
     if (usuarioEncontrado) {
-      setUsuarioActual({
+      const usuarioData = {
         usuario: usuarioEncontrado.usuario,
         rol: usuarioEncontrado.rol
-      })
+      }
+
+      setUsuarioActual(usuarioData)
       setEstaAutenticado(true)
+      localStorage.setItem('hotel-wari-usuario', JSON.stringify(usuarioData))
 
       // Redirigir según el rol
       if (usuarioEncontrado.rol === 'administrador') {
@@ -514,11 +550,14 @@ function App() {
     localStorage.setItem('hotel-wari-habitaciones', JSON.stringify(habitacionesActualizadas))
   }
   const cerrarSesion = () => {
-    setEstaAutenticado(false)
-    setUsuarioActual(null)
-    setNombreUsuario('')
-    setContrasena('')
-    setVistaActual('tablero')
+    if (window.confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+      setEstaAutenticado(false)
+      setUsuarioActual(null)
+      setNombreUsuario('')
+      setContrasena('')
+      setVistaActual('tablero')
+      localStorage.removeItem('hotel-wari-usuario')
+    }
   }
 
   // Componente Interno: Menú de Navegación
@@ -1008,6 +1047,32 @@ function App() {
               ? 'Gestión de pedidos de desayuno'
               : 'Solicitud de desayunos para huéspedes'}
           </p>
+
+          {usuarioActual.rol === 'administrador' && !audioHabilitado && (
+            <div className="alerta-activar-audio" style={{ marginBottom: '15px', textAlign: 'center' }}>
+              <button
+                onClick={activarAudio}
+                style={{
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  margin: '0 auto'
+                }}
+              >
+                🔔 Activar Sonido de Notificaciones
+              </button>
+              <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px' }}>
+                (Necesario para escuchar nuevos pedidos)
+              </p>
+            </div>
+          )}
 
           <div className="cuadricula-desayunos">
             {habitacionesAmostrar.length === 0 ? (
